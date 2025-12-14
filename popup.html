@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <link rel="stylesheet" href="select2.min.css" />
+    <script src="jquery-3.6.0.min.js"></script>
+    <script src="select2.min.js"></script>
+
+
+    <title>Acuity Tutors</title>
+    <style>
+      body {
+        font-family: "Inter", Arial, sans-serif;
+        padding: 16px;
+        width: 360px;
+        background-color: #fafafa;
+        color: #333;
+      }
+
+      h3 {
+        margin-bottom: 12px;
+        color: #222;
+        text-align: center;
+        font-weight: 600;
+        letter-spacing: 0.3px;
+      }
+
+      label {
+        display: block;
+        font-size: 13px;
+        font-weight: 600;
+        margin-top: 10px;
+        margin-bottom: 4px;
+        color: #555;
+      }
+
+      select,
+      input,
+      button {
+        width: 100%;
+        padding: 8px 10px;
+        font-size: 14px;
+        border: 1px solid #ccc;
+        border-radius: 6px;
+        box-sizing: border-box;
+      }
+
+      input[type="date"],
+      input[type="time"],
+      select {
+        background-color: #fff;
+      }
+
+      button {
+        margin-top: 14px;
+        background-color: #007bff;
+        color: white;
+        border: none;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background-color 0.2s ease;
+      }
+
+      button:hover {
+        background-color: #005fcc;
+      }
+
+      #results {
+        margin-top: 18px;
+      }
+
+      .tutor-card {
+        background: #fff;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        padding: 10px;
+        margin-bottom: 10px;
+        cursor: pointer;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+        transition: box-shadow 0.2s ease, transform 0.1s ease;
+      }
+
+      .tutor-card:hover {
+        box-shadow: 0 3px 8px rgba(0, 0, 0, 0.1);
+        transform: translateY(-2px);
+      }
+
+      .calendar-embed {
+        margin-top: 8px;
+      }
+
+      .select2-container {
+        width: 100% !important;
+        margin-bottom: 14px;
+      }
+
+      .select2-selection--multiple {
+        border-radius: 6px !important;
+        min-height: 38px !important;
+      }
+
+      /* Scrollable popup for smaller windows */
+      body {
+        overflow-y: auto;
+        max-height: 600px;
+      }
+
+      .dateTimeGroup {
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        padding: 8px;
+        margin-bottom: 10px;
+        background: #fff;
+        position: relative;
+      }
+
+      .dateTimeGroup input[type="date"],
+      .dateTimeGroup input[type="time"] {
+        width: 48%;
+        margin: 3px 1%;
+        display: inline-block;
+      }
+      .remove-btn {
+        position: absolute;
+        top: 6px;
+        right: 6px;
+        background: #eee;
+        border: none;
+        border-radius: 50%;
+        width: 22px;
+        height: 22px;
+        font-weight: 700;
+        cursor: pointer;
+        font-size: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        line-height: 1;
+        padding: 0;
+        transition: background 0.2s ease;
+      }
+      .remove-btn:hover { background: #e2e2e2; }
+    </style>
+
+  </head>
+  <body>
+    <h3>Tutors</h3>
+    <label for="courseSelect">Select a Course</label>
+    <select id="courseSelect" multiple="multiple" style="width: 100%;"></select>
+    <div id="dateTimeContainer"></div>
+
+<button id="addDateTime">+ Add another date/time</button>
+
+    <label for="timeZone">Time Zone:</label>
+      <select id="timeZone" style="width: 100%; margin-bottom: 10px;">
+        <option value="America/New_York">Eastern (EST/EDT)</option>
+        <option value="America/Chicago">Central (CST/CDT)</option>
+        <option value="America/Denver">Mountain (MST/MDT)</option>
+        <option value="America/Los_Angeles">Pacific (PST/PDT)</option>
+        <option value="Europe/London">United Kingdom (GMT/BST)</option>
+        <option value="Asia/Dubai">Dubai (GST)</option>
+        <option value="Asia/Hong_Kong">Hong Kong (HKT)</option>
+        <option value="UTC">UTC</option>
+      </select>
+
+    <label for="appointmentType">Session Length:</label>
+    <select id="appointmentType">
+      <option value="84350758">1 hour</option>
+      <option value="84357869">1.5 hour</option>
+      <option value="84357852">2 hour</option>
+    </select>
+    
+    <button id="filterAvailability">Filter</button>
+    <div id="results">Loading...</div>
+
+    <script src="data.js"></script>
+    <script src="popup.js"></script>
+  </body>
+</html>

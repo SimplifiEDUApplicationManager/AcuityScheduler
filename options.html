@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Acuity Settings</title>
+  <style>
+    body { font-family: Inter, Arial, sans-serif; padding: 16px; max-width: 520px; }
+    label { display:block; font-weight:600; margin:8px 0 4px; }
+    input, select { width:100%; padding:8px; border:1px solid #ccc; border-radius:6px; box-sizing:border-box; }
+    button { margin-top:12px; padding:8px 10px; border:none; border-radius:6px; cursor:pointer; color:#fff; background:#007bff; }
+    button.primary { background:#007bff; }
+    button.danger { background:#c0392b; }
+    .section { margin-top:24px; padding-top:16px; border-top:1px solid #e0e0e0; }
+    .helper-text { font-size:12px; color:#666; margin-top:4px; }
+    .inline-group { display:flex; gap:8px; align-items:flex-end; }
+    .inline-group input { flex:1; margin-top:0; }
+    .status { margin-top:8px; min-height:18px; font-weight:600; }
+    .ok { color:#0a7a2e; }
+    .error { color:#cc0000; }
+  </style>
+</head>
+<body>
+  <h2>Acuity Credentials</h2>
+
+  <label for="uid">User ID</label>
+  <input id="uid" type="text" />
+
+  <label for="key">API Key</label>
+  <input id="key" type="password" />
+
+  <button id="save" class="primary">Save</button>
+  <div id="msg"></div>
+
+  <div class="section">
+    <h3>Course Tutor Assignments</h3>
+    <p class="helper-text">Select a course, then use the list to add or remove tutors. Hold Command (Mac) or Ctrl (Windows) to select multiple tutors.</p>
+
+    <div class="inline-group">
+      <div style="flex:1">
+        <label for="newCourseName">Add a Course</label>
+        <input id="newCourseName" type="text" placeholder="e.g. Multivariable Calculus" />
+      </div>
+      <button id="addCourseBtn" type="button" class="primary" style="margin-top:0">Add</button>
+    </div>
+
+    <label for="courseSelector">Course</label>
+    <select id="courseSelector"></select>
+
+    <label for="courseTutors">Tutors</label>
+    <select id="courseTutors" multiple size="8"></select>
+
+    <div class="helper-text">Tip: use the search bar in the popup to filter by these assignments.</div>
+
+    <button id="saveCourseTutors" type="button" class="primary">Update Course Tutors</button>
+    <button id="removeCourseBtn" type="button" class="danger">Remove Selected Course</button>
+    <div id="courseMsg" class="status"></div>
+  </div>
+
+  <script src="data.js"></script>
+  <script src="options.js"></script>
+</body>
+</html>
