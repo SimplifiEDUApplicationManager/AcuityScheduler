@@ -1,6 +1,9 @@
 const uid = document.getElementById("uid");
 const key = document.getElementById("key");
 const msg = document.getElementById("msg");
+const remoteUrlInput = document.getElementById("remoteUrl");
+const remoteTokenInput = document.getElementById("remoteToken");
+const saveRemoteConfigBtn = document.getElementById("saveRemoteConfig");
 const newCourseInput = document.getElementById("newCourseName");
 const addCourseBtn = document.getElementById("addCourseBtn");
 const courseSelect = document.getElementById("courseSelector");
@@ -9,8 +12,9 @@ const courseMsg = document.getElementById("courseMsg");
 const saveCourseTutorsBtn = document.getElementById("saveCourseTutors");
 const removeCourseBtn = document.getElementById("removeCourseBtn");
 
-let courseTutorMap = hydrateCourseMap();
+let courseTutorMap = cloneCourseMap(DEFAULT_COURSE_TUTOR_MAP);
 const tutorOptions = buildTutorOptions();
+let remoteConfig = { url: DEFAULT_REMOTE_COURSE_URL, token: "" };
 
 document.getElementById("save").addEventListener("click", async () => {
   const ACUITY_USER_ID = uid.value.trim();
@@ -28,6 +32,28 @@ document.getElementById("save").addEventListener("click", async () => {
   msg.className = "ok";
 });
 
+saveRemoteConfigBtn.addEventListener("click", async () => {
+  remoteConfig = {
+    url: remoteUrlInput.value.trim(),
+    token: remoteTokenInput.value.trim(),
+  };
+
+  await chrome.storage.local.set({
+    COURSE_REMOTE_URL: remoteConfig.url,
+    COURSE_REMOTE_TOKEN: remoteConfig.token,
+  });
+
+  if (!remoteConfig.url) {
+    setCourseMessage("Remote sync disabled. Using local data only.");
+    return;
+  }
+
+  const loaded = await pullRemoteCourses(true);
+  if (loaded) {
+    populateCourseOptions();
+  }
+});
+
 saveCourseTutorsBtn.addEventListener("click", async () => {
   const course = courseSelect.value;
   if (!course) {
@@ -39,8 +65,10 @@ saveCourseTutorsBtn.addEventListener("click", async () => {
     Number(opt.value)
   );
   courseTutorMap[course] = selectedIds;
-  await chrome.storage.local.set({ COURSE_TUTOR_MAP: courseTutorMap });
-  setCourseMessage(`Updated ${course} with ${selectedIds.length} tutor(s).`);
+  const synced = await syncCourseMapWithRemote();
+  if (synced) {
+    setCourseMessage(`Updated ${course} with ${selectedIds.length} tutor(s).`);
+  }
 });
 
 addCourseBtn.addEventListener("click", async () => {
@@ -59,10 +87,12 @@ addCourseBtn.addEventListener("click", async () => {
   }
 
   courseTutorMap[courseName] = [];
-  await chrome.storage.local.set({ COURSE_TUTOR_MAP: courseTutorMap });
-  newCourseInput.value = "";
-  populateCourseOptions(courseName);
-  setCourseMessage(`Added ${courseName}. Assign tutors below.`);
+  const synced = await syncCourseMapWithRemote();
+  if (synced) {
+    newCourseInput.value = "";
+    populateCourseOptions(courseName);
+    setCourseMessage(`Added ${courseName}. Assign tutors below.`);
+  }
 });
 
 removeCourseBtn.addEventListener("click", async () => {
@@ -78,9 +108,11 @@ removeCourseBtn.addEventListener("click", async () => {
   if (!confirmed) return;
 
   delete courseTutorMap[course];
-  await chrome.storage.local.set({ COURSE_TUTOR_MAP: courseTutorMap });
-  populateCourseOptions();
-  setCourseMessage(`Removed ${course}.`);
+  const synced = await syncCourseMapWithRemote();
+  if (synced) {
+    populateCourseOptions();
+    setCourseMessage(`Removed ${course}.`);
+  }
 });
 
 courseSelect.addEventListener("change", () => {
@@ -89,17 +121,33 @@ courseSelect.addEventListener("change", () => {
 });
 
 (async () => {
-  const { ACUITY_USER_ID, ACUITY_API_KEY, COURSE_TUTOR_MAP } =
-    await chrome.storage.local.get([
-      "ACUITY_USER_ID",
-      "ACUITY_API_KEY",
-      "COURSE_TUTOR_MAP",
-    ]);
+  const stored = await chrome.storage.local.get([
+    "ACUITY_USER_ID",
+    "ACUITY_API_KEY",
+    "COURSE_TUTOR_MAP",
+    "COURSE_REMOTE_URL",
+    "COURSE_REMOTE_TOKEN",
+  ]);
 
-  if (ACUITY_USER_ID) uid.value = ACUITY_USER_ID;
-  if (ACUITY_API_KEY) key.value = ACUITY_API_KEY;
-  if (COURSE_TUTOR_MAP) {
-    courseTutorMap = hydrateCourseMap(COURSE_TUTOR_MAP);
+  if (stored.ACUITY_USER_ID) uid.value = stored.ACUITY_USER_ID;
+  if (stored.ACUITY_API_KEY) key.value = stored.ACUITY_API_KEY;
+
+  remoteConfig = getRemoteConfigFromStorage(stored);
+  remoteUrlInput.value = remoteConfig.url;
+  remoteTokenInput.value = remoteConfig.token;
+
+  let loaded = false;
+  if (remoteConfig.url) {
+    loaded = await pullRemoteCourses(false);
+  }
+
+  if (!loaded && stored.COURSE_TUTOR_MAP) {
+    courseTutorMap = hydrateCourseMap(stored.COURSE_TUTOR_MAP);
+    loaded = true;
+  }
+
+  if (!loaded) {
+    courseTutorMap = cloneCourseMap(DEFAULT_COURSE_TUTOR_MAP);
   }
 
   populateCourseOptions();
@@ -230,4 +278,48 @@ function cloneCourseMap(sourceMap) {
     copy[name] = normalizeTutorList(ids);
   });
   return copy;
+}
+
+async function persistCourseMapLocal() {
+  await chrome.storage.local.set({ COURSE_TUTOR_MAP: courseTutorMap });
+}
+
+async function syncCourseMapWithRemote() {
+  await persistCourseMapLocal();
+  if (!remoteConfig.url) return true;
+  try {
+    await pushCourseMapToRemote(courseTutorMap, remoteConfig);
+    return true;
+  } catch (err) {
+    console.error("Remote sync failed:", err);
+    setCourseMessage(
+      `Saved locally, but remote sync failed: ${err.message}`,
+      true
+    );
+    return false;
+  }
+}
+
+async function pullRemoteCourses(showMessages) {
+  if (!remoteConfig.url) return false;
+  try {
+    const remoteMap = await fetchCourseMapFromRemote(remoteConfig);
+    if (remoteMap && Object.keys(remoteMap).length) {
+      courseTutorMap = hydrateCourseMap(remoteMap);
+      await persistCourseMapLocal();
+      if (showMessages) {
+        setCourseMessage("Loaded shared courses from remote.");
+      }
+      return true;
+    }
+    if (showMessages) {
+      setCourseMessage("Remote source returned no courses.", true);
+    }
+  } catch (err) {
+    console.error("Remote fetch failed:", err);
+    if (showMessages) {
+      setCourseMessage(`Couldn't load remote data: ${err.message}`, true);
+    }
+  }
+  return false;
 }

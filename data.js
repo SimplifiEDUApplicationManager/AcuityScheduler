@@ -351,3 +351,4 @@ const appointmentTypeIDs = {
 };
 
 const ACUITY_USER_ID = "37177822";
+const DEFAULT_REMOTE_COURSE_URL = "";

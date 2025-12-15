@@ -32,6 +32,17 @@
   <div id="msg"></div>
 
   <div class="section">
+    <h3>Shared Course Source</h3>
+    <p class="helper-text">Point every install at the same JSON endpoint so edits sync across users.</p>
+    <label for="remoteUrl">Course JSON URL</label>
+    <input id="remoteUrl" type="url" placeholder="https://example.netlify.app/.netlify/functions/courses" />
+    <label for="remoteToken">Update Token (optional)</label>
+    <input id="remoteToken" type="text" placeholder="e.g. Bearer nfp_..." />
+    <button id="saveRemoteConfig" type="button" class="primary">Save Remote Settings</button>
+    <p class="helper-text">Endpoint must allow GET/PUT + CORS. Token, if provided, is sent in the Authorization header.</p>
+  </div>
+
+  <div class="section">
     <h3>Course Tutor Assignments</h3>
     <p class="helper-text">Select a course, then use the list to add or remove tutors. Hold Command (Mac) or Ctrl (Windows) to select multiple tutors.</p>
 
@@ -57,6 +68,7 @@
   </div>
 
   <script src="data.js"></script>
+  <script src="course-sync.js"></script>
   <script src="options.js"></script>
 </body>
 </html>

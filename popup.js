@@ -10,20 +10,11 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   resultsDiv.innerHTML = "Loading tutors...";
 
-  let courseTutorMap = hydrateCourseMap();
+  let courseTutorMap = cloneCourseMap(DEFAULT_COURSE_TUTOR_MAP);
   let tutorSubjectsById = buildTutorSubjectMap(courseTutorMap);
+  let remoteConfig = { url: DEFAULT_REMOTE_COURSE_URL, token: "" };
 
-  try {
-    const { COURSE_TUTOR_MAP } = await chrome.storage.local.get([
-      "COURSE_TUTOR_MAP",
-    ]);
-    if (COURSE_TUTOR_MAP) {
-      courseTutorMap = hydrateCourseMap(COURSE_TUTOR_MAP);
-      tutorSubjectsById = buildTutorSubjectMap(courseTutorMap);
-    }
-  } catch (err) {
-    console.warn("Unable to load saved course assignments", err);
-  }
+  await initializeCourses();
 
   populateCourseDropdown($courseSelect, courseTutorMap);
   $courseSelect.select2({
@@ -144,6 +135,48 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   }
 
+  async function initializeCourses() {
+    try {
+      const stored = await chrome.storage.local.get([
+        "COURSE_TUTOR_MAP",
+        "COURSE_REMOTE_URL",
+        "COURSE_REMOTE_TOKEN",
+      ]);
+
+      remoteConfig = getRemoteConfigFromStorage(stored);
+      let loaded = false;
+
+      if (remoteConfig.url) {
+        try {
+          const remoteMap = await fetchCourseMapFromRemote(remoteConfig);
+          if (remoteMap && Object.keys(remoteMap).length) {
+            courseTutorMap = hydrateCourseMap(remoteMap);
+            tutorSubjectsById = buildTutorSubjectMap(courseTutorMap);
+            await chrome.storage.local.set({
+              COURSE_TUTOR_MAP: courseTutorMap,
+            });
+            loaded = true;
+          }
+        } catch (err) {
+          console.warn("Remote course fetch failed:", err);
+        }
+      }
+
+      if (!loaded && stored.COURSE_TUTOR_MAP) {
+        courseTutorMap = hydrateCourseMap(stored.COURSE_TUTOR_MAP);
+        tutorSubjectsById = buildTutorSubjectMap(courseTutorMap);
+        loaded = true;
+      }
+
+      if (!loaded) {
+        courseTutorMap = cloneCourseMap(DEFAULT_COURSE_TUTOR_MAP);
+        tutorSubjectsById = buildTutorSubjectMap(courseTutorMap);
+      }
+    } catch (err) {
+      console.warn("Unable to load course assignments", err);
+    }
+  }
+
   function createDateTimeGroup() {
     const div = document.createElement("div");
     div.className = "dateTimeGroup";
@@ -254,21 +287,17 @@ document.addEventListener("DOMContentLoaded", async () => {
 });
 
 function hydrateCourseMap(storedValue) {
-  const normalized = {};
-
   if (storedValue && typeof storedValue === "object") {
+    const normalized = {};
     Object.entries(storedValue).forEach(([course, tutorIds]) => {
-      normalized[course] = normalizeTutorList(tutorIds);
+      const name = normalizeCourseName(course);
+      if (!name) return;
+      normalized[name] = normalizeTutorList(tutorIds);
     });
+    return normalized;
   }
 
-  Object.entries(DEFAULT_COURSE_TUTOR_MAP).forEach(([course, tutorIds]) => {
-    if (!Object.prototype.hasOwnProperty.call(normalized, course)) {
-      normalized[course] = normalizeTutorList(tutorIds);
-    }
-  });
-
-  return normalized;
+  return cloneCourseMap(DEFAULT_COURSE_TUTOR_MAP);
 }
 
 function buildTutorSubjectMap(courseMap) {
@@ -290,6 +319,22 @@ function normalizeTutorList(list) {
   return list
     .map((value) => Number(value))
     .filter((value) => Number.isFinite(value));
+}
+
+function normalizeCourseName(name) {
+  return typeof name === "string"
+    ? name.replace(/\s+/g, " ").trim()
+    : "";
+}
+
+function cloneCourseMap(sourceMap) {
+  const copy = {};
+  Object.entries(sourceMap || {}).forEach(([course, ids]) => {
+    const name = normalizeCourseName(course);
+    if (!name) return;
+    copy[name] = normalizeTutorList(ids);
+  });
+  return copy;
 }
 
 function isWithinRange(

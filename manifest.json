@@ -7,7 +7,8 @@
     "storage"
   ],
   "host_permissions": [
-    "https://acuityscheduling.com/*"
+    "https://acuityscheduling.com/*",
+    "https://*.netlify.app/*"
   ],
   "background": {
     "service_worker": "background.js"
