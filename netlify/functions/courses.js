@@ -12,21 +12,17 @@ const CORS_HEADERS = {
 function jsonResponse(status, obj) {
   return new Response(JSON.stringify(obj), {
     status,
-    headers: {
-      ...CORS_HEADERS,
-      "Content-Type": "application/json",
-    },
+    headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
   });
 }
 
 export default async function handler(request) {
-  // CORS preflight
   if (request.method === "OPTIONS") {
     return new Response("", { status: 200, headers: CORS_HEADERS });
   }
 
   if (request.method === "GET") {
-    const data = (await store.get("courses")) || {};
+    const data = (await store.get("courses", { type: "json" })) || {};
     return jsonResponse(200, { courses: data, updatedAt: new Date().toISOString() });
   }
 
@@ -38,17 +34,14 @@ export default async function handler(request) {
       return jsonResponse(401, { error: "Unauthorized" });
     }
 
-    let body = {};
-    try {
-      body = await request.json();
-    } catch {
-      body = {};
+    const body = await request.json().catch(() => ({}));
+    const coursesToSave = body.courses ?? body ?? {};
+
+    if (typeof coursesToSave !== "object" || coursesToSave === null) {
+      return jsonResponse(400, { error: "Courses must be a JSON object" });
     }
 
-    // Accept either { "courses": {...} } OR raw map {...}
-    const coursesToSave = body.courses ?? body ?? {};
-    await store.set("courses", coursesToSave);
-
+    await store.setJSON("courses", coursesToSave);
     return jsonResponse(200, { saved: true });
   }
 
