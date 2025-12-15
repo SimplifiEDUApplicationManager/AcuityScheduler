@@ -22,9 +22,20 @@ export default async function handler(request) {
   }
 
   if (request.method === "GET") {
-    const data = (await store.get("courses", { type: "json" })) || {};
-    return jsonResponse(200, { courses: data, updatedAt: new Date().toISOString() });
-  }
+    let data = {};
+    try {
+        data = (await store.get("courses", { type: "json" })) || {};
+    } catch {
+        // Old bad value ("[object Object]") — wipe it
+        await store.setJSON("courses", {});
+        data = {};
+    }
+
+    return jsonResponse(200, {
+        courses: data,
+        updatedAt: new Date().toISOString(),
+    });
+}
 
   if (request.method === "PUT") {
     const auth = request.headers.get("authorization") || "";
